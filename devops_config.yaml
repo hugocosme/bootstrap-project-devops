@@ -1,0 +1,24 @@
+project:
+  name: teste app 1
+  description: 'teste de criacao de projeto com '
+  owner: Hugo Cosme
+  team: DevOps
+  environment: desenvolvimento
+  created_at: '2025-04-13 13:42:49'
+technology:
+  language: Python
+  frameworks: []
+  project_type: []
+  databases: []
+  python_version: '3.7'
+dependencies:
+  manager: pip
+  infrastructure: []
+  monitoring: []
+pipeline:
+  stages:
+  - build
+  - test
+  testing: []
+  code_quality: []
+  security: []
