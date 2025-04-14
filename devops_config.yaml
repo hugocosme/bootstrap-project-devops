@@ -1,24 +1,35 @@
 project:
-  name: teste app 1
-  description: 'teste de criacao de projeto com '
-  owner: Hugo Cosme
-  team: DevOps
+  name: asdasdasd
+  description: asdasdasd
+  owner: sadasdasd
+  team: asdasdasd
   environment: desenvolvimento
-  created_at: '2025-04-13 13:42:49'
+  created_at: '2025-04-14 18:03:18'
 technology:
   language: Python
-  frameworks: []
-  project_type: []
-  databases: []
+  frameworks:
+  - TensorFlow
+  project_type:
+  - Frontend
+  - Backend
+  databases:
+  - MySQL
   python_version: '3.7'
 dependencies:
   manager: pip
-  infrastructure: []
-  monitoring: []
+  infrastructure:
+  - Kubernetes
+  - Ansible
+  monitoring:
+  - Grafana
 pipeline:
   stages:
   - build
   - test
-  testing: []
-  code_quality: []
-  security: []
+  testing:
+  - JUnit
+  code_quality:
+  - Pylint
+  - Black
+  security:
+  - Snyk

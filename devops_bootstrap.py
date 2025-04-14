@@ -1,327 +1,203 @@
 import streamlit as st
-import yaml
-import datetime
-import os
+import sqlite3
+import json
 
-def save_yaml(data, filename="devops_config.yaml"):
-    """Salva os dados do formulário em um arquivo YAML."""
-    with open(filename, 'w') as file:
-        yaml.dump(data, file, default_flow_style=False, sort_keys=False)
-    return filename
+# --- SQLite Database
+def create_table():
+    conn = sqlite3.connect("projects.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            data TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-def validate_form_data(data):
-    """Valida se todos os campos obrigatórios foram preenchidos."""
-    # Verificando informações do projeto
-    if not data.get('project', {}).get('name'):
-        return False, "Nome do projeto obrigatório"
+def save_project(name, data):
+    conn = sqlite3.connect("projects.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO projects (name, data) VALUES (?, ?)", (name, json.dumps(data)))
+    conn.commit()
+    conn.close()
+
+def list_projects():
+    conn = sqlite3.connect("projects.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, data FROM projects ORDER BY id DESC")
+    projects = cursor.fetchall()
+    conn.close()
+    return projects
+
+create_table()
+
+# --- Streamlit App
+st.set_page_config(page_title="DevOps Bootstrap Generator", layout="wide")
+st.title("🔧 DevOps CI/CD Generator - GitLab")
+
+# Session state
+if "form_data" not in st.session_state:
+    st.session_state.form_data = {}
+
+# --- Top Navigation Tabs
+tabs = st.tabs([
+    "1️⃣ Project Info", 
+    "2️⃣ Technologies", 
+    "3️⃣ Dependencies", 
+    "4️⃣ Pipeline", 
+    "✅ Generate Pipeline",
+    "📂 Saved Projects"
+])
+
+# --- TAB 1: Project Info
+with tabs[0]:
+    st.header("📝 Project Information")
+    project_name = st.text_input("Project Name", key="project_name")
+    description = st.text_area("Description")
+
+    if project_name:
+        st.session_state.form_data["project_name"] = project_name
+        st.session_state.form_data["description"] = description
+
+# --- TAB 2: Technologies
+with tabs[1]:
+    st.header("🛠️ Technologies")
+
+    language = st.selectbox("Programming Language", ["Java", ".NET"])
     
-    # Verificando tecnologias
-    tech = data.get('technology', {})
-    if not tech.get('language'):
-        return False, "Selecione uma linguagem de programação"
-    if not tech.get('frameworks'):
-        return False, "Selecione pelo menos um framework"
-    if not tech.get('project_type'):
-        return False, "Selecione pelo menos um tipo de projeto"
-    if not tech.get('databases'):
-        return False, "Selecione pelo menos um banco de dados"
-    
-    # Verificando dependências
-    deps = data.get('dependencies', {})
-    if not deps.get('manager'):
-        return False, "Selecione um gerenciador de dependências"
-    if not deps.get('infrastructure'):
-        return False, "Selecione pelo menos uma ferramenta de infraestrutura"
-    if not deps.get('monitoring'):
-        return False, "Selecione pelo menos uma ferramenta de monitoramento"
-    
-    # Verificando pipeline
-    pipe = data.get('pipeline', {})
-    if not pipe.get('stages'):
-        return False, "Selecione pelo menos um estágio da pipeline"
-    if not pipe.get('testing'):
-        return False, "Selecione pelo menos um framework de teste"
-    if not pipe.get('code_quality'):
-        return False, "Selecione pelo menos uma ferramenta de qualidade de código"
-    if not pipe.get('security'):
-        return False, "Selecione pelo menos uma ferramenta de análise de segurança"
-    
-    return True, "Todos os campos foram preenchidos corretamente"
+    java_versions = ["17", "21", "8"]
+    dotnet_versions = ["6.0", "7.0", "8.0"]
 
-def main():
-    st.set_page_config(page_title="DevOps Bootstrap", layout="wide")
+    version = st.selectbox(
+        "Language Version",
+        java_versions if language == "Java" else dotnet_versions
+    )
 
-    st.title("🚀 DevOps Bootstrap Generator")
-    st.write("Configure seu projeto e gere automaticamente um arquivo YAML de configuração para GitLab CI/CD")
+    java_frameworks = {
+        "Spring Boot": "3.2.x",
+        "Hibernate": "6.3.x",
+        "JUnit": "5.x"
+    }
 
-    # Inicializando o estado da sessão para armazenar os valores do formulário
-    if 'form_submitted' not in st.session_state:
-        st.session_state.form_submitted = False
-    
-    if 'validation_error' not in st.session_state:
-        st.session_state.validation_error = ""
-    
-    if 'yaml_content' not in st.session_state:
-        st.session_state.yaml_content = ""
-        
-    if 'gitlab_ci_content' not in st.session_state:
-        st.session_state.gitlab_ci_content = ""
+    dotnet_frameworks = {
+        "ASP.NET Core": "8.0",
+        "Entity Framework": "8.0",
+        "xUnit": "2.4",
+        "Serilog": "3.x"
+    }
 
-    # Criando abas para organizar o formulário
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Informações do Projeto", "Tecnologias", "Dependências", "Pipeline", "Resultado"])
+    frameworks_dict = java_frameworks if language == "Java" else dotnet_frameworks
 
-    with tab1:
-        st.header("Informações do Projeto")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            project_name = st.text_input("Nome do Projeto", placeholder="meu-projeto-incrivel")
-            project_description = st.text_area("Descrição", placeholder="Descreva seu projeto brevemente...")
-        
-        with col2:
-            owner = st.text_input("Responsável", placeholder="Seu nome")
-            team = st.text_input("Time", placeholder="Nome do time")
-        
-        environment = st.selectbox("Ambiente Inicial", 
-                                  ["Desenvolvimento", "Homologação", "Produção"], 
-                                  index=0)
+    selected_frameworks = st.multiselect(
+        "Frameworks/Libraries",
+        options=list(frameworks_dict.keys()),
+        format_func=lambda f: f"{f} ({frameworks_dict[f]})"
+    )
 
-    with tab2:
-        st.header("Tecnologias")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Linguagem")
-            language = st.selectbox("Linguagem de Programação", 
-                                   ["", "Python", "JavaScript", "TypeScript", "Java", "Go", "C#", "Ruby", "PHP"],
-                                   index=0)
-            
-            # Variáveis para armazenar versões específicas da linguagem
-            python_version = None
-            node_version = None
-            java_version = None
-            
-            # Opções condicionais baseadas na linguagem
-            framework = []
-            if language == "Python":
-                python_version = st.selectbox("Versão do Python", ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"])
-                framework = st.multiselect("Frameworks", 
-                                         ["Django", "FastAPI", "Flask", "Streamlit", "Pandas", "NumPy", "TensorFlow", "PyTorch"])
-            
-            elif language in ["JavaScript", "TypeScript"]:
-                node_version = st.selectbox("Versão do Node.js", ["14", "16", "18", "20"])
-                framework = st.multiselect("Frameworks", 
-                                         ["React", "Angular", "Vue", "Next.js", "Express", "NestJS", "Electron"])
-            
-            elif language == "Java":
-                java_version = st.selectbox("Versão do Java", ["8", "11", "17", "21"])
-                framework = st.multiselect("Frameworks", 
-                                         ["Spring Boot", "Quarkus", "Micronaut", "Jakarta EE"])
-            
-            elif language:  # Se uma linguagem foi selecionada, mas não é uma das com opções específicas
-                framework = st.multiselect("Frameworks", ["Especifique os frameworks relevantes"])
-        
-        with col2:
-            st.subheader("Backend/Frontend")
-            project_type = st.multiselect("Tipo de Projeto", 
-                                        ["Backend", "Frontend", "Full Stack", "Mobile", "Desktop", "CLI"])
-            
-            st.subheader("Banco de Dados")
-            databases = st.multiselect("Bancos de Dados", 
-                                      ["PostgreSQL", "MySQL", "MongoDB", "Redis", "SQLite", "Oracle", "SQL Server", "DynamoDB"])
+    database = st.selectbox("Database", ["PostgreSQL", "SQL Server", "MySQL"])
+    ansible_roles = st.multiselect("Ansible Roles", ["nginx", "docker", "git", "java", "dotnet"])
+    monitoring = st.checkbox("Use Grafana + Prometheus")
 
-    with tab3:
-        st.header("Dependências")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Gerenciamento de Dependências")
-            dependency_manager = ""
-            if language == "Python":
-                dependency_manager = st.selectbox("Gerenciador de Dependências", 
-                                               ["", "pip", "Poetry", "Pipenv", "Conda"],
-                                               index=0)
-            elif language in ["JavaScript", "TypeScript"]:
-                dependency_manager = st.selectbox("Gerenciador de Dependências", 
-                                               ["", "npm", "yarn", "pnpm"],
-                                               index=0)
-            elif language == "Java":
-                dependency_manager = st.selectbox("Gerenciador de Dependências", 
-                                               ["", "Maven", "Gradle"],
-                                               index=0)
-            elif language:  # Se uma linguagem foi selecionada
-                dependency_manager = st.text_input("Gerenciador de Dependências")
-        
-        with col2:
-            st.subheader("Infraestrutura")
-            infra_tools = st.multiselect("Ferramentas de Infraestrutura", 
-                                       ["Docker", "Kubernetes", "Terraform", "Ansible", "AWS", "GCP", "Azure"])
-            
-            st.subheader("Monitoramento")
-            monitoring_tools = st.multiselect("Ferramentas de Monitoramento", 
-                                            ["Prometheus", "Grafana", "ELK Stack", "Datadog", "New Relic", "Netdata"])
+    st.session_state.form_data.update({
+        "language": language,
+        "version": version,
+        "frameworks": selected_frameworks,
+        "database": database,
+        "ansible_roles": ansible_roles,
+        "monitoring": monitoring,
+    })
 
-    with tab4:
-        st.header("Configuração da Pipeline")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Etapas da Pipeline")
-            pipeline_stages = st.multiselect("Estágios", 
-                                          ["build", "test", "lint", "security-scan", "deploy-dev", "deploy-staging", "deploy-prod"])
-            
-            test_frameworks = st.multiselect("Frameworks de Teste", 
-                                          ["pytest", "Jest", "JUnit", "Mocha", "Cypress", "Selenium", "Postman"])
-        
-        with col2:
-            st.subheader("Qualidade de Código")
-            code_quality = st.multiselect("Ferramentas de Qualidade", 
-                                        ["SonarQube", "ESLint", "Pylint", "Black", "Prettier", "Checkstyle"])
-            
-            security_scan = st.multiselect("Análise de Segurança", 
-                                         ["OWASP Dependency Check", "Snyk", "Trivy", "Fortify", "Aqua Security"])
+# --- TAB 3: Dependencies
+with tabs[2]:
+    st.header("📦 Project Dependencies")
+    deps = st.text_area("List dependencies (one per line)", placeholder="e.g., lombok, jackson, swashbuckle...")
+    dependencies = deps.splitlines() if deps else []
 
-        # Botão para gerar o arquivo YAML
-        if st.button("Validar e Gerar Configuração", type="primary"):
-            # Construindo a estrutura de dados para o YAML
-            config_data = {
-                "project": {
-                    "name": project_name,
-                    "description": project_description,
-                    "owner": owner,
-                    "team": team,
-                    "environment": environment.lower(),
-                    "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                },
-                "technology": {
-                    "language": language,
-                    "frameworks": framework,
-                    "project_type": project_type,
-                    "databases": databases
-                },
-                "dependencies": {
-                    "manager": dependency_manager,
-                    "infrastructure": infra_tools,
-                    "monitoring": monitoring_tools
-                },
-                "pipeline": {
-                    "stages": pipeline_stages,
-                    "testing": test_frameworks,
-                    "code_quality": code_quality,
-                    "security": security_scan
-                }
-            }
-            
-            # Adicionando configurações específicas da linguagem
-            if language == "Python" and python_version:
-                config_data["technology"]["python_version"] = python_version
-            elif language in ["JavaScript", "TypeScript"] and node_version:
-                config_data["technology"]["node_version"] = node_version
-            elif language == "Java" and java_version:
-                config_data["technology"]["java_version"] = java_version
-            
-            # Validar os dados do formulário
-            is_valid, validation_message = validate_form_data(config_data)
-            
-            if is_valid:
-                # Gerar o conteúdo YAML
-                st.session_state.yaml_content = yaml.dump(config_data, default_flow_style=False, sort_keys=False)
-                st.session_state.form_submitted = True
-                st.session_state.validation_error = ""
-                
-                # Gerar também um arquivo .gitlab-ci.yml básico se Docker estiver selecionado
-                if "Docker" in infra_tools:
-                    gitlab_ci = {
-                        "stages": pipeline_stages,
-                        "variables": {
-                            "PROJECT_NAME": project_name
-                        },
-                        "build": {
-                            "stage": "build",
-                            "image": "docker:latest",
-                            "services": ["docker:dind"],
-                            "script": [
-                                "docker build -t $PROJECT_NAME:$CI_COMMIT_SHORT_SHA ."
-                            ]
-                        }
-                    }
-                    
-                    # Adicionar jobs baseados nas etapas selecionadas
-                    if "test" in pipeline_stages:
-                        if language == "Python":
-                            gitlab_ci["test"] = {
-                                "stage": "test",
-                                "image": f"python:{python_version}",
-                                "script": ["pip install -r requirements.txt", "pytest"]
-                            }
-                        elif language in ["JavaScript", "TypeScript"]:
-                            gitlab_ci["test"] = {
-                                "stage": "test",
-                                "image": f"node:{node_version}",
-                                "script": ["npm install", "npm test"]
-                            }
-                    
-                    if "lint" in pipeline_stages:
-                        gitlab_ci["lint"] = {
-                            "stage": "lint",
-                            "script": ["echo 'Running linters...'"]
-                        }
-                    
-                    if "deploy-dev" in pipeline_stages:
-                        gitlab_ci["deploy-dev"] = {
-                            "stage": "deploy-dev",
-                            "script": ["echo 'Deploying to development...'"],
-                            "environment": {"name": "development"}
-                        }
-                    
-                    st.session_state.gitlab_ci_content = yaml.dump(gitlab_ci, default_flow_style=False, sort_keys=False)
-                
-                # Alertar usuário para ir para a aba de resultado
-                st.success("Configuração validada com sucesso! Acesse a aba 'Resultado' para visualizar e baixar os arquivos.")
-                
-            else:
-                st.session_state.validation_error = validation_message
-                st.error(f"Erro de validação: {validation_message}")
-                st.session_state.form_submitted = False
+    st.session_state.form_data["dependencies"] = dependencies
 
-    with tab5:
-        st.header("Resultado")
-        
-        if st.session_state.validation_error:
-            st.error(f"Erro de validação: {st.session_state.validation_error}")
-            st.warning("Por favor, corrija os erros nas abas anteriores antes de gerar o arquivo YAML.")
-            
-        elif st.session_state.form_submitted:
-            st.success("Todos os campos foram preenchidos corretamente!")
-            
-            # Exibir o conteúdo do YAML
-            st.subheader("Conteúdo do arquivo YAML:")
-            st.code(st.session_state.yaml_content, language="yaml")
-            
-            # Adicionar opção para download
-            st.download_button(
-                label="Baixar arquivo YAML",
-                data=st.session_state.yaml_content,
-                file_name="devops_config.yaml",
-                mime="text/yaml"
-            )
-            
-            # Exibir o arquivo gitlab-ci.yml se disponível
-            if st.session_state.gitlab_ci_content:
-                st.subheader("Arquivo .gitlab-ci.yml básico gerado:")
-                st.code(st.session_state.gitlab_ci_content, language="yaml")
-                
-                st.download_button(
-                    label="Baixar arquivo .gitlab-ci.yml",
-                    data=st.session_state.gitlab_ci_content,
-                    file_name=".gitlab-ci.yml",
-                    mime="text/yaml"
-                )
-        else:
-            st.info("Preencha todos os campos obrigatórios nas abas anteriores e clique em 'Validar e Gerar Configuração' para ver o resultado aqui.")
+# --- TAB 4: Pipeline
+with tabs[3]:
+    st.header("🚀 Pipeline Configuration")
 
-if __name__ == "__main__":
-    main()
+    steps = st.multiselect("Select pipeline steps", ["Build", "Test", "SAST", "DAST", "Deploy"])
+    environment = st.selectbox("Target Environment", ["Staging", "Production", "Kubernetes", "Docker Compose"])
+
+    st.session_state.form_data["steps"] = steps
+    st.session_state.form_data["environment"] = environment
+
+# --- TAB 5: Generate CI/CD File
+with tabs[4]:
+    st.header("📄 GitLab CI/CD YAML Preview")
+
+    data = st.session_state.form_data
+
+    if "project_name" not in data:
+        st.error("Please fill out at least the Project Name in the first tab.")
+    else:
+        ci_yml = f"""
+# Project: {data['project_name']}
+# Description: {data.get('description', '')}
+# Language: {data.get('language', '')} {data.get('version', '')}
+# Frameworks: {', '.join(data.get('frameworks', []))}
+# Database: {data.get('database', '')}
+# Environment: {data.get('environment', '')}
+# Monitoring: {'Yes' if data.get('monitoring') else 'No'}
+
+stages:
+{chr(10).join([f"  - {s.lower()}" for s in data.get('steps', [])])}
+
+{chr(10).join([f"""
+{s.lower()}:
+  stage: {s.lower()}
+  script:
+    - echo '{s} running...'
+""" for s in data.get('steps', [])])}
+"""
+
+        st.code(ci_yml, language="yaml")
+
+        if st.button("💾 Save to Database"):
+            save_project(data["project_name"], data)
+            st.success("Project saved successfully!")
+
+        st.download_button("📥 Download .gitlab-ci.yml", ci_yml, file_name=".gitlab-ci.yml")
+
+# --- TAB 6: Saved Projects
+with tabs[5]:
+    st.header("📂 Saved Projects")
+
+    projects = list_projects()
+
+    if not projects:
+        st.info("No projects saved yet.")
+    else:
+        for id, name, data in projects:
+            data_dict = json.loads(data)
+            with st.expander(f"📁 {name}"):
+                st.markdown(f"**Description:** {data_dict.get('description', '-')}")
+                st.markdown(f"**Language:** {data_dict.get('language')} {data_dict.get('version')}")
+                st.markdown(f"**Frameworks:** {', '.join(data_dict.get('frameworks', []))}")
+                st.markdown(f"**Database:** {data_dict.get('database', '-')}")
+                st.markdown(f"**Monitoring:** {'✅' if data_dict.get('monitoring') else '❌'}")
+                st.markdown(f"**Pipeline Steps:** {', '.join(data_dict.get('steps', []))}")
+                st.markdown(f"**Environment:** {data_dict.get('environment', '-')}")
+
+                if st.checkbox(f"View .gitlab-ci.yml for {name}", key=f"preview_{id}"):
+                    ci_yml = f"""
+# Project: {name}
+# Language: {data_dict.get('language')} {data_dict.get('version')}
+# Frameworks: {', '.join(data_dict.get('frameworks', []))}
+
+stages:
+{chr(10).join([f"  - {s.lower()}" for s in data_dict.get('steps', [])])}
+
+{chr(10).join([f"""
+{s.lower()}:
+  stage: {s.lower()}
+  script:
+    - echo '{s} running...'
+""" for s in data_dict.get('steps', [])])}
+"""
+                    st.code(ci_yml, language="yaml")
