@@ -1,6 +1,8 @@
 # 🔧 GitLab CI/CD Generator
 Este é um Gerador Interativo de Pipeline GitLab CI/CD construído com Streamlit e persistência de dados em SQLite. Ele permite que desenvolvedores e equipes DevOps configurem rapidamente arquivos .gitlab-ci.yml complexos através de uma interface de usuário intuitiva, salvando e reutilizando as configurações dos projetos.
 
+<img title="example" alt="Alt text" src="/images/example.jpg">
+
 # ✨ Recursos
 **Configuração de Projetos**: Defina o nome, descrição, linguagem de programação, versão, frameworks e dependências do seu projeto.
 **Seleção de Tecnologias**: Suporte para Java (.NET), C# e Node.js com opções de frameworks e versões específicas.
