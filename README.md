@@ -5,13 +5,21 @@ Este é um Gerador Interativo de Pipeline GitLab CI/CD construído com Streamlit
 
 # ✨ Recursos
 **Configuração de Projetos**: Defina o nome, descrição, linguagem de programação, versão, frameworks e dependências do seu projeto.
+
 **Seleção de Tecnologias**: Suporte para Java (.NET), C# e Node.js com opções de frameworks e versões específicas.
+
 **Integração com Banco de Dados**: Escolha o tipo de banco de dados para o seu projeto.
+
 **Roles Ansible**: Selecione papéis comuns do Ansible para automação de infraestrutura.
+
 **Monitoramento**: Opção para incluir Grafana e Prometheus na configuração.
+
 **Configuração de Pipeline**: Selecione os estágios do pipeline CI/CD (Build, Test, SAST, DAST, Deploy) e o ambiente de destino.
+
 **Visualização e Download**: Pré-visualize o .gitlab-ci.yml gerado e faça o download diretamente da aplicação.
+
 **Persistência de Dados**: Salve as configurações dos seus projetos em um banco de dados SQLite para acesso e reutilização futuros.
+
 **Projetos Salvos**: Visualize detalhes dos projetos salvos e o respectivo .gitlab-ci.yml.
 
 # 🚀 Como Usar
