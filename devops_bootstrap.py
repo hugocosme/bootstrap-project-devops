@@ -2,7 +2,6 @@ import streamlit as st
 import sqlite3
 import json
 
-# --- SQLite Database
 def create_table():
     conn = sqlite3.connect("projects.db")
     cursor = conn.cursor()
@@ -33,27 +32,23 @@ def list_projects():
 
 create_table()
 
-# --- Streamlit App
 st.set_page_config(page_title="DevOps Bootstrap Generator", layout="wide")
-st.title("🔧 DevOps CI/CD Generator - GitLab")
+st.title("DevOps CI/CD Generator - GitLab")
 
-# Session state
 if "form_data" not in st.session_state:
     st.session_state.form_data = {}
 
-# --- Top Navigation Tabs
 tabs = st.tabs([
-    "1️⃣ Project Info", 
-    "2️⃣ Technologies", 
-    "3️⃣ Dependencies", 
-    "4️⃣ Pipeline", 
-    "✅ Generate Pipeline",
-    "📂 Saved Projects"
+    "1 - Project Info",
+    "2 - Technologies",
+    "3 - Dependencies",
+    "4 - Pipeline",
+    "Generate Pipeline",
+    "Saved Projects"
 ])
 
-# --- TAB 1: Project Info
 with tabs[0]:
-    st.header("📝 Project Information")
+    st.header("Project Information")
     project_name = st.text_input("Project Name", key="project_name")
     description = st.text_area("Description")
 
@@ -61,14 +56,14 @@ with tabs[0]:
         st.session_state.form_data["project_name"] = project_name
         st.session_state.form_data["description"] = description
 
-# --- TAB 2: Technologies
 with tabs[1]:
     st.header("🛠️ Technologies")
 
-    language = st.selectbox("Programming Language", ["Java", ".NET"])
-    
+    language = st.selectbox("Programming Language", ["Java", "C#", "Node"])
+
     java_versions = ["17", "21", "8"]
     dotnet_versions = ["6.0", "7.0", "8.0"]
+    node_versions = ["14.x", "16.x", "18.x"]
 
     version = st.selectbox(
         "Language Version",
@@ -86,6 +81,11 @@ with tabs[1]:
         "Entity Framework": "8.0",
         "xUnit": "2.4",
         "Serilog": "3.x"
+    }
+    node_frameworks = {
+        "Express": "4.x",
+        "NestJS": "9.x",
+        "Jest": "29.x"
     }
 
     frameworks_dict = java_frameworks if language == "Java" else dotnet_frameworks
@@ -109,27 +109,24 @@ with tabs[1]:
         "monitoring": monitoring,
     })
 
-# --- TAB 3: Dependencies
 with tabs[2]:
-    st.header("📦 Project Dependencies")
+    st.header("Project Dependencies")
     deps = st.text_area("List dependencies (one per line)", placeholder="e.g., lombok, jackson, swashbuckle...")
     dependencies = deps.splitlines() if deps else []
 
     st.session_state.form_data["dependencies"] = dependencies
 
-# --- TAB 4: Pipeline
 with tabs[3]:
-    st.header("🚀 Pipeline Configuration")
+    st.header("Pipeline Configuration")
 
     steps = st.multiselect("Select pipeline steps", ["Build", "Test", "SAST", "DAST", "Deploy"])
-    environment = st.selectbox("Target Environment", ["Staging", "Production", "Kubernetes", "Docker Compose"])
+    environment = st.selectbox("Target Environment", ["DEV", "UAT", "PROD"])
 
     st.session_state.form_data["steps"] = steps
     st.session_state.form_data["environment"] = environment
 
-# --- TAB 5: Generate CI/CD File
 with tabs[4]:
-    st.header("📄 GitLab CI/CD YAML Preview")
+    st.header("GitLab CI/CD YAML Preview")
 
     data = st.session_state.form_data
 
@@ -150,23 +147,22 @@ stages:
 
 {chr(10).join([f"""
 {s.lower()}:
-  stage: {s.lower()}
-  script:
+    stage: {s.lower()}
+    script:
     - echo '{s} running...'
 """ for s in data.get('steps', [])])}
 """
 
         st.code(ci_yml, language="yaml")
 
-        if st.button("💾 Save to Database"):
+        if st.button("Save to Database"):
             save_project(data["project_name"], data)
             st.success("Project saved successfully!")
 
-        st.download_button("📥 Download .gitlab-ci.yml", ci_yml, file_name=".gitlab-ci.yml")
+        st.download_button("Download .gitlab-ci.yml", ci_yml, file_name=".gitlab-ci.yml")
 
-# --- TAB 6: Saved Projects
 with tabs[5]:
-    st.header("📂 Saved Projects")
+    st.header("Saved Projects")
 
     projects = list_projects()
 
@@ -175,7 +171,7 @@ with tabs[5]:
     else:
         for id, name, data in projects:
             data_dict = json.loads(data)
-            with st.expander(f"📁 {name}"):
+            with st.expander(f"{name}"):
                 st.markdown(f"**Description:** {data_dict.get('description', '-')}")
                 st.markdown(f"**Language:** {data_dict.get('language')} {data_dict.get('version')}")
                 st.markdown(f"**Frameworks:** {', '.join(data_dict.get('frameworks', []))}")
@@ -195,8 +191,8 @@ stages:
 
 {chr(10).join([f"""
 {s.lower()}:
-  stage: {s.lower()}
-  script:
+    stage: {s.lower()}
+    script:
     - echo '{s} running...'
 """ for s in data_dict.get('steps', [])])}
 """
